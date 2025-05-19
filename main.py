@@ -1,5 +1,6 @@
 import asyncio
 import requests
+from background import keep_alive
 from datetime import datetime
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
@@ -158,6 +159,7 @@ async def menu_handler(message: types.Message):
 async def main():
     await dp.start_polling(bot)
 
+keep_alive()
 
 if __name__ == "__main__":
     asyncio.run(main())
