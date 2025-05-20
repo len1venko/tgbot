@@ -8,6 +8,8 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.filters import Command
 import pytz
 
+
+user_state = {}  # Временное хранилище состояний пользователей (например, ожидание даты)
 TOKEN = "7639996461:AAE1Grm61BEjUb6uGqdIz1pvmTO5z4n6-Ak"
 GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbz5DH-UVC3OJGBq_cwbqnHYcQ8yQrNXM3-5Eae46Lg5RiIN2RJkpU4L8D49dAnMRME5/exec"
 
@@ -31,6 +33,7 @@ lan_keyboard = ReplyKeyboardMarkup(
         [KeyboardButton(text="📊 Переглянути графік мікроклімату (LAN)")],
         [KeyboardButton(text="📅 Переглянути календар мікроклімату (LAN)")],
         [KeyboardButton(text="📋 Переглянути поточні параметри мікроклімату (LAN)")],
+        [KeyboardButton(text="📈 Переглянути середні значення за дату (LAN)")],
         [KeyboardButton(text="🔙 Назад")]
     ],
     resize_keyboard=True
@@ -44,6 +47,7 @@ wan_keyboard = ReplyKeyboardMarkup(
         [KeyboardButton(text="📊 Переглянути графік мікроклімату (WAN)")],
         [KeyboardButton(text="📅 Переглянути календар мікроклімату (WAN)")],
         [KeyboardButton(text="📋 Переглянути поточні параметри мікроклімату (WAN)")],
+        [KeyboardButton(text="📈 Переглянути середні значення за дату (WAN)")],
         [KeyboardButton(text="🔙 Назад")]
     ],
     resize_keyboard=True
@@ -79,6 +83,40 @@ async def start_handler(message: types.Message):
 
 @dp.message()
 async def menu_handler(message: types.Message):
+    user_id = message.from_user.id
+
+    # === Обработка ввода даты после кнопки "📈 Переглянути середні значення за дату (WAN)"
+    if user_id in user_state and user_state[user_id].get("awaiting_date"):
+        date_str = message.text.strip()
+        data = get_data_from_google_sheet()
+        if data:
+            filtered = [item for item in data if item["timestamp"].startswith(date_str)]
+            if filtered:
+                temp = sum(float(i["temperature"]) for i in filtered) / len(filtered)
+                hum = sum(float(i["humidity"]) for i in filtered) / len(filtered)
+                press = sum(float(i["pressure"]) for i in filtered) / len(filtered)
+                alt = sum(float(i["altitude"]) for i in filtered) / len(filtered)
+                gas = sum(float(i["gasValue"]) for i in filtered) / len(filtered)
+
+                response = (
+                    f"📈 <b>Середні значення за {date_str} (WAN):</b>\n"
+                    f"🌡 Температура: <b>{temp:.2f}</b> °C\n"
+                    f"💧 Вологість: <b>{hum:.2f}</b> %\n"
+                    f"🔽 Тиск: <b>{press:.2f}</b> hPa\n"
+                    f"⛰ Висота: <b>{alt:.2f}</b> m\n"
+                    f"🛢 Газ: <b>{gas:.2f}</b> ppm"
+                )
+                await message.answer(response, parse_mode="HTML", reply_markup=wan_keyboard)
+            else:
+                await message.answer("❌ Немає даних за цю дату.", reply_markup=wan_keyboard)
+        else:
+            await message.answer("❌ Не вдалося отримати дані з Google Sheets.", reply_markup=wan_keyboard)
+
+        # Сброс состояния
+        user_state.pop(user_id)
+        return
+
+    
     # Обрабатываем основное меню
     if message.text == "🖥️ LAN":
         await message.answer("Виберіть дію:", reply_markup=lan_keyboard)
@@ -150,12 +188,18 @@ async def menu_handler(message: types.Message):
         else:
             await message.answer("❌ Помилка: дані не знайдені.", reply_markup=wan_keyboard)
 
+    elif message.text == "📈 Переглянути середні значення за дату (WAN)":
+        await message.answer("🗓 Введіть дату у форматі YYYY-MM-DD:")
+        dp["awaiting_date"] = True
+        dp["user_id"] = message.from_user.id
+
     # Назад в главное меню
     elif message.text == "🔙 Назад":
         await message.answer("Оберіть потрібну дію:", reply_markup=main_keyboard)
     else:
         await message.answer("Я не розумію цю команду. Будь ласка, оберіть опцію з меню.")
 
+    
 
 async def main():
     await dp.start_polling(bot)
