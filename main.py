@@ -77,82 +77,24 @@ async def start_handler(message: types.Message):
 @dp.message()
 async def menu_handler(message: types.Message):
     user_id = message.from_user.id  # Получаем user_id из сообщения
-    
-    # Проверяем, не находится ли пользователь в состоянии ожидания даты
-    if user_id in user_state and user_state[user_id].get("awaiting_date"):
-        input_date = message.text.strip()  # Ожидаем YYYY-MM-DD
-        print(f"Получена дата: {input_date}")  # Логируем дату
 
-        try:
-            # Преобразуем в формат DD.MM.YYYY
-            dt_obj = datetime.strptime(input_date, "%Y-%m-%d")
-            formatted_date = dt_obj.strftime("%d.%m.%Y")
-            print(f"Дата преобразована: {formatted_date}")  # Логируем преобразованную дату
-        except ValueError:
-            await message.answer("❌ Неправильний формат дати. Введіть у форматі YYYY-MM-DD.")
-            return
-
-        data = get_data_from_google_sheet()
-        if data:
-            # Фильтруем данные по дате, введённой пользователем
-            filtered = [item for item in data if "timestamp" in item and match_date(item["timestamp"], dt_obj)]
-            
-
-            import re
-
-            def extract_number(value_str):
-                """Извлекает число из строки, игнорируя текст и единицы измерения"""
-                try:
-                    match = re.search(r"[-+]?[0-9]*\.?[0-9]+", value_str)
-                    if match:
-                        return float(match.group())
-                except:
-                    pass
-                return 0.0
-
-
-            if filtered:
-                # Вычисляем средние значения, как и раньше
-                temp = sum(extract_number(i["temperature"]) for i in filtered) / len(filtered)
-                hum = sum(extract_number(i["humidity"]) for i in filtered) / len(filtered)
-                press = sum(extract_number(i["pressure"]) for i in filtered) / len(filtered)
-                alt = sum(extract_number(i["altitude"]) for i in filtered) / len(filtered)
-                gas = sum(extract_number(i["gasValue"]) for i in filtered) / len(filtered)
-
-
-                response = (
-                    f"📈 <b>Середні значення за {dt_obj.strftime('%d.%m.%Y')} (WAN):</b>\n"
-                    f"🌡 Температура: <b>{temp:.2f}</b> °C\n"
-                    f"💧 Вологість: <b>{hum:.2f}</b> %\n"
-                    f"🔽 Тиск: <b>{press:.2f}</b> hPa\n"
-                    f"⛰ Висота: <b>{alt:.2f}</b> m\n"
-                    f"🛢 Газ: <b>{gas:.2f}</b> ppm"
-                )
-                await message.answer(response, parse_mode="HTML", reply_markup=wan_keyboard)
-            else:
-                await message.answer("❌ Немає даних за цю дату.", reply_markup=wan_keyboard)
-        else:
-            await message.answer("❌ Не вдалося отримати дані з Google Sheets.", reply_markup=wan_keyboard)
-
-        # Сброс состояния
-        user_state.pop(user_id, None)
+    # 🌍 Кнопка "Почати користування"
+    if message.text.strip() == "🌍 Почати користування":
+        user_state.pop(user_id, None)  # Сброс состояния, если было ожидание
+        await message.answer("Виберіть дію:", reply_markup=wan_keyboard)
         return
 
-
-    # Обрабатываем основное меню
-    if message.text == "🌍 Почати користування":
-        # Сначала сбрасываем состояние ожидания даты, чтобы предотвратить его активацию
-        if user_id in user_state and user_state[user_id].get("awaiting_date"):
-            user_state.pop(user_id)
-        
-        await message.answer("Виберіть дію:", reply_markup=wan_keyboard)
-
-
-    # Кнопки WAN
+    # ℹ️ Переглянути історію
     elif message.text.strip() == "ℹ️ Переглянути історію параметрів мікроклімату":
         await message.answer("🔗 [Історія (WAN)](https://surl.li/harpcn)", parse_mode="Markdown", reply_markup=wan_keyboard)
+        return
+
+    # 🌤️ LAN
     elif message.text.strip() == "🌤️ Перехід до головної сторінки веб-інтерфейсу (LAN)":
         await message.answer("🔗 [Дані (WAN)](https://duck-liked-slowly.ngrok-free.app/)", parse_mode="Markdown", reply_markup=wan_keyboard)
+        return
+
+    # 📋 Поточні параметри
     elif message.text.strip() == "📋 Переглянути поточні параметри мікроклімату":
         data = get_data_from_google_sheet()
         if data:
@@ -175,16 +117,74 @@ async def menu_handler(message: types.Message):
                 await message.answer("❌ Помилка: не вдалося знайти timestamp в даних.", reply_markup=wan_keyboard)
         else:
             await message.answer("❌ Помилка: дані не знайдені.", reply_markup=wan_keyboard)
+        return
 
+    # 📈 Запрос средней даты
     elif message.text.strip() == "📈 Переглянути середні значення параметрів мікроклімату за дату":
         await message.answer("🗓 Введіть дату у форматі YYYY-MM-DD:")
         user_state[user_id] = {"awaiting_date": True}
+        return
 
-    # Назад в главное меню
+    # 🔙 Назад
     elif message.text.strip() == "🔙 Назад":
+        user_state.pop(user_id, None)  # Сброс состояния
         await message.answer("Оберіть потрібну дію:", reply_markup=main_keyboard)
-    else:
-        await message.answer("Я не розумію цю команду. Будь ласка, оберіть опцію з меню.")
+        return
+
+    # ⏳ Проверка: ожидаем ли дату
+    if user_id in user_state and user_state[user_id].get("awaiting_date"):
+        input_date = message.text.strip()
+        print(f"Получена дата: {input_date}")
+
+        try:
+            dt_obj = datetime.strptime(input_date, "%Y-%m-%d")
+            formatted_date = dt_obj.strftime("%d.%m.%Y")
+            print(f"Дата преобразована: {formatted_date}")
+        except ValueError:
+            await message.answer("❌ Неправильний формат дати. Введіть у форматі YYYY-MM-DD.")
+            return
+
+        data = get_data_from_google_sheet()
+        if data:
+            filtered = [item for item in data if "timestamp" in item and match_date(item["timestamp"], dt_obj)]
+
+            import re
+            def extract_number(value_str):
+                try:
+                    match = re.search(r"[-+]?[0-9]*\.?[0-9]+", value_str)
+                    if match:
+                        return float(match.group())
+                except:
+                    pass
+                return 0.0
+
+            if filtered:
+                temp = sum(extract_number(i["temperature"]) for i in filtered) / len(filtered)
+                hum = sum(extract_number(i["humidity"]) for i in filtered) / len(filtered)
+                press = sum(extract_number(i["pressure"]) for i in filtered) / len(filtered)
+                alt = sum(extract_number(i["altitude"]) for i in filtered) / len(filtered)
+                gas = sum(extract_number(i["gasValue"]) for i in filtered) / len(filtered)
+
+                response = (
+                    f"📈 <b>Середні значення за {dt_obj.strftime('%d.%m.%Y')} (WAN):</b>\n"
+                    f"🌡 Температура: <b>{temp:.2f}</b> °C\n"
+                    f"💧 Вологість: <b>{hum:.2f}</b> %\n"
+                    f"🔽 Тиск: <b>{press:.2f}</b> hPa\n"
+                    f"⛰ Висота: <b>{alt:.2f}</b> m\n"
+                    f"🛢 Газ: <b>{gas:.2f}</b> ppm"
+                )
+                await message.answer(response, parse_mode="HTML", reply_markup=wan_keyboard)
+            else:
+                await message.answer("❌ Немає даних за цю дату.", reply_markup=wan_keyboard)
+        else:
+            await message.answer("❌ Не вдалося отримати дані з Google Sheets.", reply_markup=wan_keyboard)
+
+        user_state.pop(user_id, None)
+        return
+
+    # Если ничего не подошло — неизвестное сообщение
+    await message.answer("Я не розумію цю команду. Будь ласка, оберіть опцію з меню.")
+
 
 
 async def main():
