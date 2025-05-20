@@ -10,11 +10,8 @@ import pytz
 
 def match_date(timestamp_str, target_date):
     try:
-        # Парсим строку времени в UTC
         utc_time = datetime.strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S.%fZ")
-        # Преобразуем в локальное время (Kyiv)
         local_time = utc_time.replace(tzinfo=pytz.utc).astimezone(pytz.timezone("Europe/Kyiv"))
-        # Сравниваем только дату
         return local_time.date() == target_date.date()
     except Exception as e:
         print(f"⚠️ Error parsing timestamp: {e}")
@@ -23,7 +20,7 @@ def match_date(timestamp_str, target_date):
 
 user_state = {}  # Временное хранилище состояний пользователей (например, ожидание даты)
 TOKEN = "7639996461:AAE1Grm61BEjUb6uGqdIz1pvmTO5z4n6-Ak"
-GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbz5DH-UVC3OJGBq_cwbqnHYcQ8yQrNXM3-5Eae46Lg5RiIN2RJkpU4L8D49dAnMRME5/exec"
+GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbyx9trfhFUWfJZoI6uIQzO06Cgqz8oXkLaNsFZKJkWTtVDplkhkaD75iJul-NNerah5/exec"
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
