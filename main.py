@@ -20,7 +20,7 @@ def match_date(timestamp_str, target_date):
 
 user_state = {}  # Временное хранилище состояний пользователей (например, ожидание даты)
 TOKEN = "7639996461:AAE1Grm61BEjUb6uGqdIz1pvmTO5z4n6-Ak"
-GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbyx9trfhFUWfJZoI6uIQzO06Cgqz8oXkLaNsFZKJkWTtVDplkhkaD75iJul-NNerah5/exec"
+GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbxjXjYmRXTuHXJMXBF1lSBEVsqKuVf3aHrCCSS1_k5qq0O8I6BH1MI972D0bAcCTE3g/exec"
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
