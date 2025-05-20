@@ -8,6 +8,18 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.filters import Command
 import pytz
 
+def match_date(timestamp_str, target_date):
+    try:
+        # Парсим строку времени в UTC
+        utc_time = datetime.strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S.%fZ")
+        # Преобразуем в локальное время (Kyiv)
+        local_time = utc_time.replace(tzinfo=pytz.utc).astimezone(pytz.timezone("Europe/Kyiv"))
+        # Сравниваем только дату
+        return local_time.date() == target_date.date()
+    except Exception as e:
+        print(f"⚠️ Error parsing timestamp: {e}")
+        return False
+
 
 user_state = {}  # Временное хранилище состояний пользователей (например, ожидание даты)
 TOKEN = "7639996461:AAE1Grm61BEjUb6uGqdIz1pvmTO5z4n6-Ak"
@@ -83,8 +95,11 @@ async def menu_handler(message: types.Message):
 
         data = get_data_from_google_sheet()
         if data:
-            filtered = [item for item in data if item["timestamp"].split()[0] == formatted_date]
+            # Фильтруем данные по дате, введённой пользователем
+            filtered = [item for item in data if "timestamp" in item and match_date(item["timestamp"], dt_obj)]
+            
             if filtered:
+                # Вычисляем средние значения, как и раньше
                 temp = sum(float(i["temperature"]) for i in filtered) / len(filtered)
                 hum = sum(float(i["humidity"]) for i in filtered) / len(filtered)
                 press = sum(float(i["pressure"]) for i in filtered) / len(filtered)
@@ -92,7 +107,7 @@ async def menu_handler(message: types.Message):
                 gas = sum(float(i["gasValue"]) for i in filtered) / len(filtered)
 
                 response = (
-                    f"📈 <b>Середні значення за {formatted_date} (WAN):</b>\n"
+                    f"📈 <b>Середні значення за {dt_obj.strftime('%d.%m.%Y')} (WAN):</b>\n"
                     f"🌡 Температура: <b>{temp:.2f}</b> °C\n"
                     f"💧 Вологість: <b>{hum:.2f}</b> %\n"
                     f"🔽 Тиск: <b>{press:.2f}</b> hPa\n"
