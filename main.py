@@ -83,23 +83,21 @@ async def start_handler(message: types.Message):
 
 @dp.message()
 async def menu_handler(message: types.Message):
-    if user_id in user_state and user_state[user_id].get("awaiting_date"):
-    input_date = message.text.strip()  # Ожидаем YYYY-MM-DD
-    try:
-        # Преобразуем в формат DD.MM.YYYY
-        dt_obj = datetime.strptime(input_date, "%Y-%m-%d")
-        formatted_date = dt_obj.strftime("%d.%m.%Y")
-    except ValueError:
-        await message.answer("❌ Неправильний формат дати. Введіть у форматі YYYY-MM-DD.")
-        return
+       if user_id in user_state and user_state[user_id].get("awaiting_date"):
+        input_date = message.text.strip()  # Ожидаем YYYY-MM-DD
 
-    data = get_data_from_google_sheet()
-    if data:
-        filtered = [item for item in data if item["timestamp"].startswith(formatted_date)]
-        if filtered:
-            # ⬇ Расчёты (как у тебя уже было)
-            ...
+        try:
+            # Преобразуем в формат DD.MM.YYYY
+            dt_obj = datetime.strptime(input_date, "%Y-%m-%d")
+            formatted_date = dt_obj.strftime("%d.%m.%Y")
+        except ValueError:
+            await message.answer("❌ Неправильний формат дати. Введіть у форматі YYYY-MM-DD.")
+            return
 
+        data = get_data_from_google_sheet()
+        if data:
+            filtered = [item for item in data if item["timestamp"].startswith(formatted_date)]
+            if filtered:
                 temp = sum(float(i["temperature"]) for i in filtered) / len(filtered)
                 hum = sum(float(i["humidity"]) for i in filtered) / len(filtered)
                 press = sum(float(i["pressure"]) for i in filtered) / len(filtered)
@@ -107,7 +105,7 @@ async def menu_handler(message: types.Message):
                 gas = sum(float(i["gasValue"]) for i in filtered) / len(filtered)
 
                 response = (
-                    f"📈 <b>Середні значення за {date_str} (WAN):</b>\n"
+                    f"📈 <b>Середні значення за {formatted_date} (WAN):</b>\n"
                     f"🌡 Температура: <b>{temp:.2f}</b> °C\n"
                     f"💧 Вологість: <b>{hum:.2f}</b> %\n"
                     f"🔽 Тиск: <b>{press:.2f}</b> hPa\n"
@@ -196,7 +194,7 @@ async def menu_handler(message: types.Message):
         else:
             await message.answer("❌ Помилка: дані не знайдені.", reply_markup=wan_keyboard)
 
-    elif message.text == "📈 Переглянути середні значення за дату (WAN)":
+        elif message.text == "📈 Переглянути середні значення за дату (WAN)":
         await message.answer("🗓 Введіть дату у форматі YYYY-MM-DD:")
         user_state[user_id] = {"awaiting_date": True}
 
