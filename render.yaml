@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: tgbot
+    name: tgbot-2
     env: python
     buildCommand: ""
     startCommand: "python main.py"
