@@ -19,25 +19,11 @@ dp = Dispatcher()
 # Главное меню
 main_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="🖥️ LAN")],
-        [KeyboardButton(text="🌍 WAN")],
+        [KeyboardButton(text="🌍 Почати користування")],
     ],
     resize_keyboard=True
 )
 
-# Подменю для LAN
-lan_keyboard = ReplyKeyboardMarkup(
-    keyboard=[
-        [KeyboardButton(text="ℹ️ Переглянути історію показників мікроклімату (LAN)")],
-        [KeyboardButton(text="🌤️ Переглянути дані про мікроклімат (LAN)")],
-        [KeyboardButton(text="📊 Переглянути графік мікроклімату (LAN)")],
-        [KeyboardButton(text="📅 Переглянути календар мікроклімату (LAN)")],
-        [KeyboardButton(text="📋 Переглянути поточні параметри мікроклімату (LAN)")],
-        [KeyboardButton(text="📈 Переглянути середні значення за дату (LAN)")],
-        [KeyboardButton(text="🔙 Назад")]
-    ],
-    resize_keyboard=True
-)
 
 # Подменю для WAN
 wan_keyboard = ReplyKeyboardMarkup(
@@ -78,31 +64,28 @@ def convert_to_local_time(timestamp):
 
 @dp.message(Command("start"))
 async def start_handler(message: types.Message):
-    await message.answer("Оберіть звідки ви бажаєте почати користування:", reply_markup=main_keyboard)
+    await message.answer("Натисніть на кнопку для продовження спілкування:", reply_markup=main_keyboard)
 
 
 @dp.message()
 async def menu_handler(message: types.Message):
     user_id = message.from_user.id  # Получаем user_id из сообщения
     
+    # Если пользователь находится в состоянии ожидания даты
     if user_id in user_state and user_state[user_id].get("awaiting_date"):
         input_date = message.text.strip()  # Ожидаем YYYY-MM-DD
 
         try:
-            # Преобразуем введенную дату в формат, который используется в данных (DD.MM.YYYY)
+            # Преобразуем в формат DD.MM.YYYY
             dt_obj = datetime.strptime(input_date, "%Y-%m-%d")
             formatted_date = dt_obj.strftime("%d.%m.%Y")
-            
-            # Сравниваем с данными из таблицы
-            filtered = [item for item in data if item["timestamp"].startswith(formatted_date)]
-
         except ValueError:
             await message.answer("❌ Неправильний формат дати. Введіть у форматі YYYY-MM-DD.")
             return
 
         data = get_data_from_google_sheet()
         if data:
-            filtered = [item for item in data if item["timestamp"].startswith(formatted_date)]
+            filtered = [item for item in data if item["timestamp"].split()[0] == formatted_date]
             if filtered:
                 temp = sum(float(i["temperature"]) for i in filtered) / len(filtered)
                 hum = sum(float(i["humidity"]) for i in filtered) / len(filtered)
@@ -129,53 +112,16 @@ async def menu_handler(message: types.Message):
         return
 
     # Обрабатываем основное меню
-    if message.text == "🖥️ LAN":
-        await message.answer("Виберіть дію:", reply_markup=lan_keyboard)
-    elif message.text == "🌍 WAN":
+    if message.text == "🌍 Почати користування":
         await message.answer("Виберіть дію:", reply_markup=wan_keyboard)
 
-    # Кнопки LAN
-    elif message.text == "ℹ️ Переглянути історію показників мікроклімату (LAN)":
-        await message.answer("🔗 [Історія (LAN)](https://surl.li/harpcn)", parse_mode="Markdown", reply_markup=lan_keyboard)
-    elif message.text == "🌤️ Переглянути дані про мікроклімат (LAN)":
-        await message.answer("🔗 [Дані (LAN)](http://192.168.0.100)", parse_mode="Markdown", reply_markup=lan_keyboard)
-    elif message.text == "📊 Переглянути графік мікроклімату (LAN)":
-        await message.answer("🔗 [Графік (LAN)](http://192.168.0.100/index)", parse_mode="Markdown", reply_markup=lan_keyboard)
-    elif message.text == "📅 Переглянути календар мікроклімату (LAN)":
-        await message.answer("🔗 [Календар (LAN)](http://192.168.0.100/calendar)", parse_mode="Markdown", reply_markup=lan_keyboard)
-    elif message.text == "📋 Переглянути поточні параметри мікроклімату (LAN)":
-        data = get_data_from_google_sheet()
-        if data:
-            last_entry = data[-1]
-            timestamp = last_entry.get("timestamp", None)
-            if timestamp:
-                formatted_time = convert_to_local_time(timestamp)
-                response_message = (
-                    f"📋 <b>Поточні параметри мікроклімату (LAN):</b>\n"
-                    f"🌡️ Температура: <b>{last_entry['temperature']}</b>\n"
-                    f"💧 Вологість: <b>{last_entry['humidity']}</b>\n"
-                    f"🔽 Атмосферний тиск: <b>{last_entry['pressure']}</b>\n"
-                    f"⛰ Висота над рівнем моря: <b>{last_entry['altitude']}</b>\n"
-                    f"🧑‍🔬 Рівень газу у повітрі: <b>{last_entry['gasValue']}</b>\n"
-                    f"⚠️ Наявність газу у повітрі: <b>{last_entry['gasState']}</b>\n"
-                    f"🕒 Час: <i>{formatted_time}</i>"
-                )
-                await message.answer(response_message, parse_mode="HTML", reply_markup=lan_keyboard)
-            else:
-                await message.answer("❌ Помилка: не вдалося знайти timestamp в даних.", reply_markup=lan_keyboard)
-        else:
-            await message.answer("❌ Помилка: дані не знайдені.", reply_markup=lan_keyboard)
 
     # Кнопки WAN
-    elif message.text == "ℹ️ Переглянути історію показників мікроклімату (WAN)":
+    elif message.text == "ℹ️ Переглянути історію параметрів мікроклімату ":
         await message.answer("🔗 [Історія (WAN)](https://surl.li/harpcn)", parse_mode="Markdown", reply_markup=wan_keyboard)
-    elif message.text == "🌤️ Переглянути дані про мікроклімат (WAN)":
+    elif message.text == "🌤️ Перехід до головної сторінки веб-інтерфейсу (lAN)":
         await message.answer("🔗 [Дані (WAN)](https://duck-liked-slowly.ngrok-free.app/)", parse_mode="Markdown", reply_markup=wan_keyboard)
-    elif message.text == "📊 Переглянути графік мікроклімату (WAN)":
-        await message.answer("🔗 [Графік (WAN)](https://duck-liked-slowly.ngrok-free.app/index)", parse_mode="Markdown", reply_markup=wan_keyboard)
-    elif message.text == "📅 Переглянути календар мікроклімату (WAN)":
-        await message.answer("🔗 [Календар (WAN)](https://duck-liked-slowly.ngrok-free.app/calendar)", parse_mode="Markdown", reply_markup=wan_keyboard)
-    elif message.text == "📋 Переглянути поточні параметри мікроклімату (WAN)":
+    elif message.text == "📋 Переглянути поточні параметри мікроклімату":
         data = get_data_from_google_sheet()
         if data:
             last_entry = data[-1]
@@ -198,7 +144,7 @@ async def menu_handler(message: types.Message):
         else:
             await message.answer("❌ Помилка: дані не знайдені.", reply_markup=wan_keyboard)
 
-    elif message.text == "📈 Переглянути середні значення за дату (WAN)":
+    elif message.text == "📈 Переглянути середні значення параметрів мікроклімату за дату":
         await message.answer("🗓 Введіть дату у форматі YYYY-MM-DD:")
         user_state[user_id] = {"awaiting_date": True}
 
@@ -207,7 +153,7 @@ async def menu_handler(message: types.Message):
         await message.answer("Оберіть потрібну дію:", reply_markup=main_keyboard)
     else:
         await message.answer("Я не розумію цю команду. Будь ласка, оберіть опцію з меню.")
-        
+
 
 async def main():
     await dp.start_polling(bot)
