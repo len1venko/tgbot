@@ -40,8 +40,8 @@ main_keyboard = ReplyKeyboardMarkup(
 # Подменю для WAN
 wan_keyboard = ReplyKeyboardMarkup(
     keyboard=[
-        [KeyboardButton(text="ℹ️ Переглянути історію показників мікроклімату")],
-        [KeyboardButton(text="🌤️ Переглянути дані про мікроклімат (LAN)")],
+        [KeyboardButton(text="ℹ️ Переглянути історію параметрів мікроклімату")],
+        [KeyboardButton(text="🌤️ Перехід до головної сторінки веб-інтерфейсу (LAN)")],
         [KeyboardButton(text="📋 Переглянути поточні параметри мікроклімату")],
         [KeyboardButton(text="📈 Переглянути середні значення параметрів мікроклімату за дату")],
         [KeyboardButton(text="🔙 Назад")]
@@ -132,7 +132,7 @@ async def menu_handler(message: types.Message):
     # Кнопки WAN
     elif message.text == "ℹ️ Переглянути історію параметрів мікроклімату ":
         await message.answer("🔗 [Історія (WAN)](https://surl.li/harpcn)", parse_mode="Markdown", reply_markup=wan_keyboard)
-    elif message.text == "🌤️ Перехід до головної сторінки веб-інтерфейсу (lAN)":
+    elif message.text == "🌤️ Перехід до головної сторінки веб-інтерфейсу (LAN)":
         await message.answer("🔗 [Дані (WAN)](https://duck-liked-slowly.ngrok-free.app/)", parse_mode="Markdown", reply_markup=wan_keyboard)
     elif message.text == "📋 Переглянути поточні параметри мікроклімату":
         data = get_data_from_google_sheet()
