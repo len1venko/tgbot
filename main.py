@@ -83,15 +83,23 @@ async def start_handler(message: types.Message):
 
 @dp.message()
 async def menu_handler(message: types.Message):
-    user_id = message.from_user.id
-
-    # === Обработка ввода даты после кнопки "📈 Переглянути середні значення за дату (WAN)"
     if user_id in user_state and user_state[user_id].get("awaiting_date"):
-        date_str = message.text.strip()
-        data = get_data_from_google_sheet()
-        if data:
-            filtered = [item for item in data if item["timestamp"].startswith(date_str)]
-            if filtered:
+    input_date = message.text.strip()  # Ожидаем YYYY-MM-DD
+    try:
+        # Преобразуем в формат DD.MM.YYYY
+        dt_obj = datetime.strptime(input_date, "%Y-%m-%d")
+        formatted_date = dt_obj.strftime("%d.%m.%Y")
+    except ValueError:
+        await message.answer("❌ Неправильний формат дати. Введіть у форматі YYYY-MM-DD.")
+        return
+
+    data = get_data_from_google_sheet()
+    if data:
+        filtered = [item for item in data if item["timestamp"].startswith(formatted_date)]
+        if filtered:
+            # ⬇ Расчёты (как у тебя уже было)
+            ...
+
                 temp = sum(float(i["temperature"]) for i in filtered) / len(filtered)
                 hum = sum(float(i["humidity"]) for i in filtered) / len(filtered)
                 press = sum(float(i["pressure"]) for i in filtered) / len(filtered)
