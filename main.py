@@ -78,7 +78,7 @@ async def start_handler(message: types.Message):
 async def menu_handler(message: types.Message):
     user_id = message.from_user.id  # Получаем user_id из сообщения
     
-    # Если пользователь находится в состоянии ожидания даты
+    # Проверяем, не находится ли пользователь в состоянии ожидания даты
     if user_id in user_state and user_state[user_id].get("awaiting_date"):
         input_date = message.text.strip()  # Ожидаем YYYY-MM-DD
         print(f"Получена дата: {input_date}")  # Логируем дату
@@ -126,6 +126,10 @@ async def menu_handler(message: types.Message):
 
     # Обрабатываем основное меню
     if message.text == "🌍 Почати користування":
+        # Сначала сбрасываем состояние ожидания даты, чтобы предотвратить его активацию
+        if user_id in user_state and user_state[user_id].get("awaiting_date"):
+            user_state.pop(user_id)
+        
         await message.answer("Виберіть дію:", reply_markup=wan_keyboard)
 
 
