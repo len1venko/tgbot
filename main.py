@@ -190,8 +190,8 @@ async def menu_handler(message: types.Message):
 
     elif message.text == "📈 Переглянути середні значення за дату (WAN)":
         await message.answer("🗓 Введіть дату у форматі YYYY-MM-DD:")
-        dp["awaiting_date"] = True
-        dp["user_id"] = message.from_user.id
+        user_state[user_id] = {"awaiting_date": True}
+
 
     # Назад в главное меню
     elif message.text == "🔙 Назад":
