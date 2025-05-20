@@ -189,7 +189,7 @@ async def menu_handler(message: types.Message):
             await message.answer("❌ Помилка: дані не знайдені.", reply_markup=wan_keyboard)
 
     elif message.text == "📈 Переглянути середні значення за дату (WAN)":
-        await message.answer("🗓 Введіть дату у форматі YYYY-MM-DD:")
+        await message.answer("🗓 Введіть дату у форматі DD.MM.YYYY:")
         user_state[user_id] = {"awaiting_date": True}
 
 
