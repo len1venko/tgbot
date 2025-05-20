@@ -81,11 +81,13 @@ async def menu_handler(message: types.Message):
     # Если пользователь находится в состоянии ожидания даты
     if user_id in user_state and user_state[user_id].get("awaiting_date"):
         input_date = message.text.strip()  # Ожидаем YYYY-MM-DD
+        print(f"Получена дата: {input_date}")  # Логируем дату
 
         try:
             # Преобразуем в формат DD.MM.YYYY
             dt_obj = datetime.strptime(input_date, "%Y-%m-%d")
             formatted_date = dt_obj.strftime("%d.%m.%Y")
+            print(f"Дата преобразована: {formatted_date}")  # Логируем преобразованную дату
         except ValueError:
             await message.answer("❌ Неправильний формат дати. Введіть у форматі YYYY-MM-DD.")
             return
@@ -120,6 +122,7 @@ async def menu_handler(message: types.Message):
         # Сброс состояния
         user_state.pop(user_id, None)
         return
+
 
     # Обрабатываем основное меню
     if message.text == "🌍 Почати користування":
