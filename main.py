@@ -161,5 +161,14 @@ async def main():
 
 keep_alive()
 
+# 🔁 Пингуем себя, чтобы не засыпал
+def ping_self():
+    while True:
+        try:
+            requests.get("https://tgbot-2-354s.onrender.com")
+        except:
+            pass
+        time.sleep(600)
+
 if __name__ == "__main__":
     asyncio.run(main())
