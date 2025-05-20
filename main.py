@@ -97,13 +97,28 @@ async def menu_handler(message: types.Message):
             # Фильтруем данные по дате, введённой пользователем
             filtered = [item for item in data if "timestamp" in item and match_date(item["timestamp"], dt_obj)]
             
+
+            import re
+
+            def extract_number(value_str):
+                """Извлекает число из строки, игнорируя текст и единицы измерения"""
+                try:
+                    match = re.search(r"[-+]?[0-9]*\.?[0-9]+", value_str)
+                    if match:
+                        return float(match.group())
+                except:
+                    pass
+                return 0.0
+
+
             if filtered:
                 # Вычисляем средние значения, как и раньше
-                temp = sum(float(i["temperature"]) for i in filtered) / len(filtered)
-                hum = sum(float(i["humidity"]) for i in filtered) / len(filtered)
-                press = sum(float(i["pressure"]) for i in filtered) / len(filtered)
-                alt = sum(float(i["altitude"]) for i in filtered) / len(filtered)
-                gas = sum(float(i["gasValue"]) for i in filtered) / len(filtered)
+                temp = sum(extract_number(i["temperature"]) for i in filtered) / len(filtered)
+                hum = sum(extract_number(i["humidity"]) for i in filtered) / len(filtered)
+                press = sum(extract_number(i["pressure"]) for i in filtered) / len(filtered)
+                alt = sum(extract_number(i["altitude"]) for i in filtered) / len(filtered)
+                gas = sum(extract_number(i["gasValue"]) for i in filtered) / len(filtered)
+
 
                 response = (
                     f"📈 <b>Середні значення за {dt_obj.strftime('%d.%m.%Y')} (WAN):</b>\n"
