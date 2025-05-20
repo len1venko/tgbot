@@ -170,5 +170,8 @@ def ping_self():
             pass
         time.sleep(600)
 
+from threading import Thread
+Thread(target=ping_self).start()
+
 if __name__ == "__main__":
     asyncio.run(main())
