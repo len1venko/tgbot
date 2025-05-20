@@ -89,9 +89,13 @@ async def menu_handler(message: types.Message):
         input_date = message.text.strip()  # Ожидаем YYYY-MM-DD
 
         try:
-            # Преобразуем в формат DD.MM.YYYY
+            # Преобразуем введенную дату в формат, который используется в данных (DD.MM.YYYY)
             dt_obj = datetime.strptime(input_date, "%Y-%m-%d")
             formatted_date = dt_obj.strftime("%d.%m.%Y")
+            
+            # Сравниваем с данными из таблицы
+            filtered = [item for item in data if item["timestamp"].startswith(formatted_date)]
+
         except ValueError:
             await message.answer("❌ Неправильний формат дати. Введіть у форматі YYYY-MM-DD.")
             return
