@@ -85,7 +85,7 @@ async def menu_handler(message: types.Message):
         await message.answer("🧪 Введіть назву параметру (temperature, humidity, pressure, altitude, gasValue):")
         return
 
-        # Этап 1: Ожидаем название параметра
+              # Этап 1: Ожидаем название параметра
     if user_id in user_state and user_state[user_id].get("awaiting_forecast_param"):
         param = message.text.strip()
         allowed = ["temperature", "humidity", "pressure", "altitude", "gasValue"]
@@ -173,6 +173,7 @@ async def menu_handler(message: types.Message):
             reply_markup=wan_keyboard
         )
         return
+
 
 
     # 🌍 Кнопка "Почати користування"
