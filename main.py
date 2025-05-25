@@ -41,7 +41,8 @@ wan_keyboard = ReplyKeyboardMarkup(
         [KeyboardButton(text="🌤️ Перехід до головної сторінки веб-інтерфейсу (LAN)")],
         [KeyboardButton(text="📋 Переглянути поточні параметри мікроклімату")],
         [KeyboardButton(text="📈 Переглянути середні значення параметрів мікроклімату за дату")],
-        [KeyboardButton(text="📊 Прогноз параметру на N годин")],  # 🔴 Новая кнопка
+        [KeyboardButton(text="📊 Прогноз параметру на N годин")],
+        [KeyboardButton(text="🛠 Оновити пороги температури та вологості")],
         [KeyboardButton(text="🔙 Назад")]
     ],
     resize_keyboard=True
@@ -73,6 +74,37 @@ def convert_to_local_time(timestamp):
 @dp.message(Command("start"))
 async def start_handler(message: types.Message):
     await message.answer("Натисніть на кнопку для продовження спілкування:", reply_markup=main_keyboard)
+
+@dp.message()
+async def update_thresholds_handler(message: types.Message):
+    if message.text.strip() == "🛠 Оновити пороги температури та вологості":
+        await message.answer("Будь ласка, введіть нові пороги для температури та вологості у форматі:\n\nТемпература: <значення>°C\nВологість: <значення>%")
+        user_state[message.from_user.id] = {"awaiting_new_thresholds": True}
+        return
+@dp.message()
+async def receive_thresholds_handler(message: types.Message):
+    user_id = message.from_user.id
+    if user_id in user_state and user_state[user_id].get("awaiting_new_thresholds"):
+        try:
+            # Разбираем введенные данные
+            input_text = message.text.strip()
+            temp_str, humidity_str = input_text.split('\n')
+
+            temp = float(temp_str.split(':')[1].strip().replace('°C', ''))
+            humidity = float(humidity_str.split(':')[1].strip().replace('%', ''))
+
+            # Отправляем данные на сервер для обновления порогов
+            response = requests.get(f"http://yourserver.com/set-thresholds?temp={temp}&humidity={humidity}")
+            if response.status_code == 200:
+                await message.answer(f"✅ Пороги оновлено! Температура: {temp}°C, Вологість: {humidity}%", reply_markup=main_keyboard)
+            else:
+                await message.answer("❌ Помилка при оновленні порогів.", reply_markup=main_keyboard)
+
+        except Exception as e:
+            await message.answer("❌ Невірний формат вводу. Будь ласка, введіть пороги у правильному форматі.", reply_markup=main_keyboard)
+
+        user_state.pop(user_id, None)  # Сброс состояния после завершения ввода
+        return
 
 
 @dp.message()
