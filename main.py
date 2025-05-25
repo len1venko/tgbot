@@ -80,7 +80,7 @@ async def menu_handler(message: types.Message):
     user_id = message.from_user.id  # Получаем user_id из сообщения
     
     # 📊 Прогноз параметра
-    elif message.text.strip() == "📊 Прогноз параметру на N годин":
+    if message.text.strip() == "📊 Прогноз параметру на N годин":
         user_state[user_id] = {"awaiting_forecast_param": True}
         await message.answer("🧪 Введіть назву параметру (temperature, humidity, pressure, altitude, gasValue):")
         return
