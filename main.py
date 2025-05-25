@@ -41,6 +41,7 @@ wan_keyboard = ReplyKeyboardMarkup(
         [KeyboardButton(text="🌤️ Перехід до головної сторінки веб-інтерфейсу (LAN)")],
         [KeyboardButton(text="📋 Переглянути поточні параметри мікроклімату")],
         [KeyboardButton(text="📈 Переглянути середні значення параметрів мікроклімату за дату")],
+        [KeyboardButton(text="📊 Прогноз параметру на N годин")],  # 🔴 Новая кнопка
         [KeyboardButton(text="🔙 Назад")]
     ],
     resize_keyboard=True
@@ -77,6 +78,95 @@ async def start_handler(message: types.Message):
 @dp.message()
 async def menu_handler(message: types.Message):
     user_id = message.from_user.id  # Получаем user_id из сообщения
+        # Этап 1: Ожидаем название параметра
+    if user_id in user_state and user_state[user_id].get("awaiting_forecast_param"):
+        param = message.text.strip()
+        allowed = ["temperature", "humidity", "pressure", "altitude", "gasValue"]
+        if param not in allowed:
+            await message.answer("❌ Невірний параметр. Виберіть з: temperature, humidity, pressure, altitude, gasValue.")
+            return
+
+        user_state[user_id] = {
+            "forecast_param_selected": param,
+            "awaiting_forecast_hours": True
+        }
+        await message.answer(f"⏳ Скільки годин уперед ви хочете передбачити параметр <b>{param}</b>? Введіть число:", parse_mode="HTML")
+        return
+
+    # Этап 2: Ожидаем количество часов
+    if user_id in user_state and user_state[user_id].get("awaiting_forecast_hours"):
+        try:
+            hours = int(message.text.strip())
+            if hours <= 0 or hours > 1000:
+                raise ValueError
+        except ValueError:
+            await message.answer("❌ Введіть коректне число годин (1–1000).")
+            return
+
+        param = user_state[user_id]["forecast_param_selected"]
+        user_state.pop(user_id, None)  # сбрасываем
+
+        # Получаем данные
+        data = get_data_from_google_sheet()
+        if not data:
+            await message.answer("❌ Не вдалося отримати дані з Google Sheets.", reply_markup=wan_keyboard)
+            return
+
+        import re
+        def extract_number(value_str):
+            try:
+                match = re.search(r"[-+]?[0-9]*\.?[0-9]+", value_str)
+                if match:
+                    return float(match.group())
+            except:
+                pass
+            return None
+
+        # Подготовка данных
+        param_data = [
+            {
+                "time": datetime.strptime(i["timestamp"], "%Y-%m-%dT%H:%M:%S.%fZ"),
+                "value": extract_number(i.get(param, "0"))
+            }
+            for i in data
+            if "timestamp" in i and extract_number(i.get(param, "0")) is not None
+        ]
+
+        if len(param_data) < 2:
+            await message.answer("❌ Недостатньо даних для прогнозу.", reply_markup=wan_keyboard)
+            return
+
+        # Линейная регрессия по времени
+        x = [(i["time"] - param_data[0]["time"]).total_seconds() / 3600 for i in param_data]  # часы
+        y = [i["value"] for i in param_data]
+        n = len(x)
+        sum_x = sum(x)
+        sum_y = sum(y)
+        sum_xy = sum(x[i] * y[i] for i in range(n))
+        sum_xx = sum(xi ** 2 for xi in x)
+
+        a = (n * sum_xy - sum_x * sum_y) / (n * sum_xx - sum_x ** 2)
+        b = (sum_y - a * sum_x) / n
+
+        future_x = x[-1] + hours
+        predicted = a * future_x + b
+
+        units = {
+            "temperature": "°C",
+            "humidity": "%",
+            "pressure": "hPa",
+            "altitude": "m",
+            "gasValue": "ppm"
+        }
+
+        await message.answer(
+            f"📊 <b>Прогноз параметру {param} через {hours} год:</b>\n"
+            f"🔮 Очікуване значення: <b>{predicted:.2f}</b> {units.get(param, '')}",
+            parse_mode="HTML",
+            reply_markup=wan_keyboard
+        )
+        return
+
 
     # 🌍 Кнопка "Почати користування"
     if message.text.strip() == "🌍 Почати користування":
@@ -180,6 +270,12 @@ async def menu_handler(message: types.Message):
             await message.answer("❌ Не вдалося отримати дані з Google Sheets.", reply_markup=wan_keyboard)
 
         user_state.pop(user_id, None)
+        return
+
+    # 📊 Прогноз параметра
+    elif message.text.strip() == "📊 Прогноз параметру на N годин":
+        user_state[user_id] = {"awaiting_forecast_param": True}
+        await message.answer("🧪 Введіть назву параметру (temperature, humidity, pressure, altitude, gasValue):")
         return
 
     # Если ничего не подошло — неизвестное сообщение
