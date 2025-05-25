@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request, jsonify
 from threading import Thread
 import os
 
@@ -22,7 +22,11 @@ def set_thresholds():
     if temp is not None and humidity is not None:
         thresholds['temp'] = temp
         thresholds['humidity'] = humidity
-        return jsonify({"status": "success", "message": "Thresholds updated"}), 200
+        return jsonify({
+            "status": "success",
+            "message": "Thresholds updated",
+            "thresholds": thresholds
+        }), 200
     else:
         return jsonify({"status": "error", "message": "Invalid data"}), 400
 
@@ -36,4 +40,5 @@ def run():
 
 def keep_alive():
     t = Thread(target=run)
+    t.daemon = True
     t.start()
