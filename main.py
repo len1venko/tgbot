@@ -78,6 +78,13 @@ async def start_handler(message: types.Message):
 @dp.message()
 async def menu_handler(message: types.Message):
     user_id = message.from_user.id  # Получаем user_id из сообщения
+    
+    # 📊 Прогноз параметра
+    elif message.text.strip() == "📊 Прогноз параметру на N годин":
+        user_state[user_id] = {"awaiting_forecast_param": True}
+        await message.answer("🧪 Введіть назву параметру (temperature, humidity, pressure, altitude, gasValue):")
+        return
+
         # Этап 1: Ожидаем название параметра
     if user_id in user_state and user_state[user_id].get("awaiting_forecast_param"):
         param = message.text.strip()
@@ -270,12 +277,6 @@ async def menu_handler(message: types.Message):
             await message.answer("❌ Не вдалося отримати дані з Google Sheets.", reply_markup=wan_keyboard)
 
         user_state.pop(user_id, None)
-        return
-
-    # 📊 Прогноз параметра
-    elif message.text.strip() == "📊 Прогноз параметру на N годин":
-        user_state[user_id] = {"awaiting_forecast_param": True}
-        await message.answer("🧪 Введіть назву параметру (temperature, humidity, pressure, altitude, gasValue):")
         return
 
     # Если ничего не подошло — неизвестное сообщение
