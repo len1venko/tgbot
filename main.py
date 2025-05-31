@@ -80,7 +80,7 @@ async def start_handler(message: types.Message):
 async def menu_handler(message: types.Message):
     user_id = message.from_user.id
     text = message.text.strip()
-    ESP_URL = "http://<IP_ESP8266>/set-thresholds"  # Заміни <IP_ESP8266> на свій
+    ESP_URL = "http://192.168.0.102/set-thresholds"  # Заміни <IP_ESP8266> на свій
 
     # ⚙️ Змінити порогові значення реле
     if text == "⚙️ Змінити порогові значення реле":
