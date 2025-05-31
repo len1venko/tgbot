@@ -42,6 +42,7 @@ wan_keyboard = ReplyKeyboardMarkup(
         [KeyboardButton(text="📋 Переглянути поточні параметри мікроклімату")],
         [KeyboardButton(text="📈 Переглянути середні значення параметрів мікроклімату за дату")],
         [KeyboardButton(text="📊 Прогноз параметру на N годин")],  # 🔴 Новая кнопка
+        [KeyboardButton(text="⚙️ Змінити порогові значення реле")],
         [KeyboardButton(text="🔙 Назад")]
     ],
     resize_keyboard=True
@@ -77,17 +78,63 @@ async def start_handler(message: types.Message):
 
 @dp.message()
 async def menu_handler(message: types.Message):
-    user_id = message.from_user.id  # Получаем user_id из сообщения
-    
+    user_id = message.from_user.id
+    text = message.text.strip()
+    ESP_URL = "http://<IP_ESP8266>/set-thresholds"  # Заміни <IP_ESP8266> на свій
+
+    # ⚙️ Змінити порогові значення реле
+    if text == "⚙️ Змінити порогові значення реле":
+        user_state[user_id] = {"awaiting_temp_threshold": True}
+        await message.answer("🌡 Введіть нове порогове значення температури (°C):")
+        return
+
+    if user_id in user_state and user_state[user_id].get("awaiting_temp_threshold"):
+        try:
+            temp = float(text)
+        except ValueError:
+            await message.answer("❌ Введіть коректне числове значення температури.")
+            return
+        user_state[user_id] = {
+            "temp": temp,
+            "awaiting_humidity_threshold": True
+        }
+        await message.answer("💧 Введіть нове порогове значення вологості (%):")
+        return
+
+    if user_id in user_state and user_state[user_id].get("awaiting_humidity_threshold"):
+        try:
+            humidity = float(text)
+        except ValueError:
+            await message.answer("❌ Введіть коректне числове значення вологості.")
+            return
+
+        temp = user_state[user_id]["temp"]
+        user_state.pop(user_id, None)
+
+        try:
+            response = requests.get(f"{ESP_URL}?temp={temp}&humidity={humidity}", timeout=5)
+            if response.ok:
+                await message.answer(
+                    f"✅ Порогові значення оновлено:\n"
+                    f"🌡 Температура: {temp} °C\n"
+                    f"💧 Вологість: {humidity} %",
+                    reply_markup=wan_keyboard
+                )
+            else:
+                await message.answer("❌ Помилка при збереженні порогів на ESP.", reply_markup=wan_keyboard)
+        except Exception as e:
+            print(f"❌ Помилка при з'єднанні з ESP: {e}")
+            await message.answer("❌ Не вдалося з'єднатися з ESP. Перевірте з'єднання.", reply_markup=wan_keyboard)
+        return
+
     # 📊 Прогноз параметра
-    if message.text.strip() == "📊 Прогноз параметру на N годин":
+    if text == "📊 Прогноз параметру на N годин":
         user_state[user_id] = {"awaiting_forecast_param": True}
         await message.answer("🧪 Введіть назву параметру (temperature, humidity, pressure, altitude, gasValue):")
         return
 
-              # Этап 1: Ожидаем название параметра
     if user_id in user_state and user_state[user_id].get("awaiting_forecast_param"):
-        param = message.text.strip()
+        param = text
         allowed = ["temperature", "humidity", "pressure", "altitude", "gasValue"]
         if param not in allowed:
             await message.answer("❌ Невірний параметр. Виберіть з: temperature, humidity, pressure, altitude, gasValue.")
@@ -100,10 +147,9 @@ async def menu_handler(message: types.Message):
         await message.answer(f"⏳ Скільки годин уперед ви хочете передбачити параметр <b>{param}</b>? Введіть число:", parse_mode="HTML")
         return
 
-    # Этап 2: Ожидаем количество часов
     if user_id in user_state and user_state[user_id].get("awaiting_forecast_hours"):
         try:
-            hours = int(message.text.strip())
+            hours = int(text)
             if hours <= 0 or hours > 1000:
                 raise ValueError
         except ValueError:
@@ -111,9 +157,8 @@ async def menu_handler(message: types.Message):
             return
 
         param = user_state[user_id]["forecast_param_selected"]
-        user_state.pop(user_id, None)  # сбрасываем
+        user_state.pop(user_id, None)
 
-        # Получаем данные
         data = get_data_from_google_sheet()
         if not data:
             await message.answer("❌ Не вдалося отримати дані з Google Sheets.", reply_markup=wan_keyboard)
@@ -129,7 +174,6 @@ async def menu_handler(message: types.Message):
                 pass
             return None
 
-        # Подготовка данных
         param_data = [
             {
                 "time": datetime.strptime(i["timestamp"], "%Y-%m-%dT%H:%M:%S.%fZ"),
@@ -143,8 +187,7 @@ async def menu_handler(message: types.Message):
             await message.answer("❌ Недостатньо даних для прогнозу.", reply_markup=wan_keyboard)
             return
 
-        # Линейная регрессия по времени
-        x = [(i["time"] - param_data[0]["time"]).total_seconds() / 3600 for i in param_data]  # часы
+        x = [(i["time"] - param_data[0]["time"]).total_seconds() / 3600 for i in param_data]
         y = [i["value"] for i in param_data]
         n = len(x)
         sum_x = sum(x)
@@ -174,26 +217,21 @@ async def menu_handler(message: types.Message):
         )
         return
 
-
-
-    # 🌍 Кнопка "Почати користування"
-    if message.text.strip() == "🌍 Почати користування":
-        user_state.pop(user_id, None)  # Сброс состояния, если было ожидание
+    # 🌍 Почати користування
+    if text == "🌍 Почати користування":
+        user_state.pop(user_id, None)
         await message.answer("Виберіть дію:", reply_markup=wan_keyboard)
         return
 
-    # ℹ️ Переглянути історію
-    elif message.text.strip() == "ℹ️ Переглянути історію параметрів мікроклімату":
+    elif text == "ℹ️ Переглянути історію параметрів мікроклімату":
         await message.answer("🔗 [Історія (WAN)](https://surl.li/harpcn)", parse_mode="Markdown", reply_markup=wan_keyboard)
         return
 
-    # 🌤️ LAN
-    elif message.text.strip() == "🌤️ Перехід до головної сторінки веб-інтерфейсу (LAN)":
+    elif text == "🌤️ Перехід до головної сторінки веб-інтерфейсу (LAN)":
         await message.answer("🔗 [Дані (WAN)](https://duck-liked-slowly.ngrok-free.app/)", parse_mode="Markdown", reply_markup=wan_keyboard)
         return
 
-    # 📋 Поточні параметри
-    elif message.text.strip() == "📋 Переглянути поточні параметри мікроклімату":
+    elif text == "📋 Переглянути поточні параметри мікроклімату":
         data = get_data_from_google_sheet()
         if data:
             last_entry = data[-1]
@@ -217,27 +255,19 @@ async def menu_handler(message: types.Message):
             await message.answer("❌ Помилка: дані не знайдені.", reply_markup=wan_keyboard)
         return
 
-    # 📈 Запрос средней даты
-    elif message.text.strip() == "📈 Переглянути середні значення параметрів мікроклімату за дату":
+    elif text == "📈 Переглянути середні значення параметрів мікроклімату за дату":
         await message.answer("🗓 Введіть дату у форматі YYYY-MM-DD:")
         user_state[user_id] = {"awaiting_date": True}
         return
 
-    # 🔙 Назад
-    elif message.text.strip() == "🔙 Назад":
-        user_state.pop(user_id, None)  # Сброс состояния
+    elif text == "🔙 Назад":
+        user_state.pop(user_id, None)
         await message.answer("Оберіть потрібну дію:", reply_markup=main_keyboard)
         return
 
-    # ⏳ Проверка: ожидаем ли дату
     if user_id in user_state and user_state[user_id].get("awaiting_date"):
-        input_date = message.text.strip()
-        print(f"Получена дата: {input_date}")
-
         try:
-            dt_obj = datetime.strptime(input_date, "%Y-%m-%d")
-            formatted_date = dt_obj.strftime("%d.%m.%Y")
-            print(f"Дата преобразована: {formatted_date}")
+            dt_obj = datetime.strptime(text, "%Y-%m-%d")
         except ValueError:
             await message.answer("❌ Неправильний формат дати. Введіть у форматі YYYY-MM-DD.")
             return
@@ -245,7 +275,6 @@ async def menu_handler(message: types.Message):
         data = get_data_from_google_sheet()
         if data:
             filtered = [item for item in data if "timestamp" in item and match_date(item["timestamp"], dt_obj)]
-
             import re
             def extract_number(value_str):
                 try:
@@ -280,8 +309,8 @@ async def menu_handler(message: types.Message):
         user_state.pop(user_id, None)
         return
 
-    # Если ничего не подошло — неизвестное сообщение
     await message.answer("Я не розумію цю команду. Будь ласка, оберіть опцію з меню.")
+
 
 
 
