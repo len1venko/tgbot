@@ -4,6 +4,7 @@ import json
 import os
 
 app = Flask(__name__)
+CORS(app)
 THRESHOLD_FILE = "thresholds.json"
 
 # Загружаем пороги из файла или ставим дефолт
