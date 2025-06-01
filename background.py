@@ -1,5 +1,7 @@
 from flask import Flask, request, jsonify
 from threading import Thread
+from flask_cors import CORS
+
 import json
 import os
 
