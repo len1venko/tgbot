@@ -99,7 +99,7 @@ async def menu_handler(message: types.Message):
                 raise ValueError("Out of range")
 
             # 🔗 Відправка на сервер
-            response = requests.get(f"http://localhost:5000/set-thresholds?temp={temp}&humidity={humidity}")
+            response = requests.get(f"https://tgbot-2-354s.onrender.com/set-thresholds?temp={temp}&humidity={humidity}")
             if response.ok:
                 await message.answer(f"✅ Пороги оновлено:\n🌡 Температура: {temp}°C\n💧 Вологість: {humidity}%", reply_markup=wan_keyboard)
             else:
