@@ -8,7 +8,6 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.filters import Command
 import pytz
 from aiogram import Bot, Dispatcher, types
-from keep_alive import keep_alive
 
 
 def match_date(timestamp_str, target_date):
