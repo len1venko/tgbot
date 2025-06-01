@@ -35,9 +35,12 @@ def set_thresholds():
         humidity = float(request.args.get("humidity"))
         thresholds = {"temp": temp, "humidity": humidity}
         save_thresholds(thresholds)
+        print(f"Set thresholds: temp={temp}, humidity={humidity}")  # Лог
         return "OK", 200
-    except:
+    except Exception as e:
+        print(f"Error in set-thresholds: {e}")
         return "Invalid parameters", 400
+
 
 
 
