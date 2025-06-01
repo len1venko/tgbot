@@ -10,10 +10,6 @@ current_thresholds = {
     "humidity": 60
 }
 
-@app.route('/')
-def home():
-    return "✅ I'm alive"
-
 @app.route('/get-thresholds')
 def get_thresholds():
     return jsonify(current_thresholds)
@@ -25,9 +21,15 @@ def set_thresholds():
         humidity = float(request.args.get("humidity", ""))
         current_thresholds["temp"] = temp
         current_thresholds["humidity"] = humidity
-        return "✅ OK", 200
+        return "OK", 200
     except:
-        return "❌ Invalid parameters", 400
+        return "Invalid parameters", 400
+
+
+@app.route('/')
+def home():
+    return "✅ I'm alive"
+
 
 def run():
     port = int(os.environ.get("PORT", 5000))
