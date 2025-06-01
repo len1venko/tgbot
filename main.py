@@ -10,8 +10,6 @@ import pytz
 from aiogram import Bot, Dispatcher, types
 from keep_alive import keep_alive
 
-# Запускаем Flask-сервер
-keep_alive()
 
 def match_date(timestamp_str, target_date):
     try:
