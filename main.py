@@ -42,7 +42,6 @@ wan_keyboard = ReplyKeyboardMarkup(
         [KeyboardButton(text="📋 Переглянути поточні параметри мікроклімату")],
         [KeyboardButton(text="📈 Переглянути середні значення параметрів мікроклімату за дату")],
         [KeyboardButton(text="📊 Прогноз параметру на N годин")],  # 🔴 Новая кнопка
-        [KeyboardButton(text="🔧 Увімкнути/Вимкнути реле")],  # Новая кнопка
         [KeyboardButton(text="🔙 Назад")]
     ],
     resize_keyboard=True
@@ -174,62 +173,6 @@ async def menu_handler(message: types.Message):
             reply_markup=wan_keyboard
         )
         return
-    
-    # 🔧 Управление реле
-    elif message.text.strip() == "🔧 Увімкнути/Вимкнути реле":
-        try:
-            response = requests.get("https://duck-liked-slowly.ngrok-free.app/relay-status")
-            if response.status_code == 200:
-                relay_status = response.text
-                status_text = "включено" if relay_status == "on" else "выключено"
-                relay_keyboard = ReplyKeyboardMarkup(
-                    keyboard=[
-                        [KeyboardButton(text="🔛 Включить реле")],
-                        [KeyboardButton(text="🔴 Выключить реле")],
-                        [KeyboardButton(text="🔙 Назад")]
-                    ],
-                    resize_keyboard=True
-                )
-                await message.answer(
-                    f"🛠 Текущее состояние реле: <b>{status_text}</b>\nВыберите действие:",
-                    parse_mode="HTML",
-                    reply_markup=relay_keyboard
-                )
-                user_state[user_id] = {"awaiting_relay_action": True}
-            else:
-                await message.answer("❌ Ошибка связи с устройством.", reply_markup=wan_keyboard)
-        except Exception as e:
-            await message.answer(f"❌ Ошибка: {e}", reply_markup=wan_keyboard)
-        return
-
-    # Обработка действий с реле
-    if user_id in user_state and user_state[user_id].get("awaiting_relay_action"):
-        if message.text.strip() == "🔛 Включить реле":
-            try:
-                response = requests.get("https://192.168.0.103/relay?state=on")
-                if response.status_code == 200:
-                    await message.answer("✅ Реле включено!", reply_markup=wan_keyboard)
-                else:
-                    await message.answer("❌ Ошибка при включении реле.", reply_markup=wan_keyboard)
-            except Exception as e:
-                await message.answer(f"❌ Ошибка: {e}", reply_markup=wan_keyboard)
-            user_state.pop(user_id, None)
-            return
-        elif message.text.strip() == "🔴 Выключить реле":
-            try:
-                response = requests.get("https://192.168.0.103/relay?state=off")
-                if response.status_code == 200:
-                    await message.answer("✅ Реле выключено!", reply_markup=wan_keyboard)
-                else:
-                    await message.answer("❌ Ошибка при выключении реле.", reply_markup=wan_keyboard)
-            except Exception as e:
-                await message.answer(f"❌ Ошибка: {e}", reply_markup=wan_keyboard)
-            user_state.pop(user_id, None)
-            return
-        elif message.text.strip() == "🔙 Назад":
-            user_state.pop(user_id, None)
-            await message.answer("Оберіть потрібну дію:", reply_markup=wan_keyboard)
-            return
 
 
 
@@ -246,7 +189,7 @@ async def menu_handler(message: types.Message):
 
     # 🌤️ LAN
     elif message.text.strip() == "🌤️ Перехід до головної сторінки веб-інтерфейсу (LAN)":
-        await message.answer("🔗 [Дані (WAN)](https:/192.168.0.103)", parse_mode="Markdown", reply_markup=wan_keyboard)
+        await message.answer("🔗 [Дані (WAN)](https://192.168.0.103/)", parse_mode="Markdown", reply_markup=wan_keyboard)
         return
 
     # 📋 Поточні параметри
