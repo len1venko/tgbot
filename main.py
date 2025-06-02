@@ -107,7 +107,7 @@ async def menu_handler(message: types.Message):
 
             # Отправка запроса на веб-интерфейс
             try:
-                resp = requests.get(f"https://tgbot-2-354s.onrender.com/set-thresholds?temp={temp}&humidity={humidity}")
+                resp = requests.get(f"https://192.168.0.103/set-thresholds?temp={temp}&humidity={humidity}")
                 if resp.status_code == 200:
                     await message.answer(f"✅ Пороги успішно оновлено!\n🌡 Температура: {temp}°C\n💧 Вологість: {humidity}%", reply_markup=wan_keyboard)
                 else:
