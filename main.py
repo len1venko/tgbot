@@ -7,8 +7,6 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.filters import Command
 import pytz
-from aiogram import Bot, Dispatcher, types
-
 
 def match_date(timestamp_str, target_date):
     try:
@@ -43,12 +41,12 @@ wan_keyboard = ReplyKeyboardMarkup(
         [KeyboardButton(text="🌤️ Перехід до головної сторінки веб-інтерфейсу (LAN)")],
         [KeyboardButton(text="📋 Переглянути поточні параметри мікроклімату")],
         [KeyboardButton(text="📈 Переглянути середні значення параметрів мікроклімату за дату")],
-        [KeyboardButton(text="📊 Прогноз параметру на N годин")],
-        [KeyboardButton(text="⚙️ Змінити пороги температури та вологості")],  # 🔧 Новая кнопка
+        [KeyboardButton(text="📊 Прогноз параметру на N годин")],  # 🔴 Новая кнопка
         [KeyboardButton(text="🔙 Назад")]
     ],
     resize_keyboard=True
 )
+
 
 # Функция для получения данных из Google Таблицы
 def get_data_from_google_sheet():
@@ -79,44 +77,17 @@ async def start_handler(message: types.Message):
 
 @dp.message()
 async def menu_handler(message: types.Message):
-    user_id = message.from_user.id
-    text = message.text.strip()
-
-    # === 1. Команда: Змінити пороги ===
-    if text == "⚙️ Змінити пороги температури та вологості":
-        user_state[user_id] = {"awaiting_thresholds": True}
-        await message.answer("Введіть нові пороги у форматі:\n<pre>температура,вологість</pre>\n\nНаприклад: <b>27,65</b>", parse_mode="HTML")
-        return
-
-    # === 2. Введення порогів температури/вологісті ===
-    if user_id in user_state and user_state[user_id].get("awaiting_thresholds"):
-        try:
-            temp_str, hum_str = text.split(",")
-            temp = float(temp_str)
-            humidity = float(hum_str)
-            if not (0 < temp < 100 and 0 < humidity <= 100):
-                raise ValueError("Out of range")
-
-            # 🔗 Відправка на сервер
-            response = requests.get(f"https://tgbot-2-354s.onrender.com/set-thresholds?temp={temp}&humidity={humidity}")
-            if response.ok:
-                await message.answer(f"✅ Пороги оновлено:\n🌡 Температура: {temp}°C\n💧 Вологість: {humidity}%", reply_markup=wan_keyboard)
-            else:
-                await message.answer("❌ Помилка при надсиланні на сервер.", reply_markup=wan_keyboard)
-        except:
-            await message.answer("❌ Неправильний формат. Введіть значення у форматі: <b>27,65</b>", parse_mode="HTML")
-        user_state.pop(user_id, None)
-        return
-
-    # === 3. Команда: прогноз ===
-    if text == "📊 Прогноз параметру на N годин":
+    user_id = message.from_user.id  # Получаем user_id из сообщения
+    
+    # 📊 Прогноз параметра
+    if message.text.strip() == "📊 Прогноз параметру на N годин":
         user_state[user_id] = {"awaiting_forecast_param": True}
         await message.answer("🧪 Введіть назву параметру (temperature, humidity, pressure, altitude, gasValue):")
         return
 
-    # === 4. Очікуємо назву параметру ===
+              # Этап 1: Ожидаем название параметра
     if user_id in user_state and user_state[user_id].get("awaiting_forecast_param"):
-        param = text
+        param = message.text.strip()
         allowed = ["temperature", "humidity", "pressure", "altitude", "gasValue"]
         if param not in allowed:
             await message.answer("❌ Невірний параметр. Виберіть з: temperature, humidity, pressure, altitude, gasValue.")
@@ -129,10 +100,10 @@ async def menu_handler(message: types.Message):
         await message.answer(f"⏳ Скільки годин уперед ви хочете передбачити параметр <b>{param}</b>? Введіть число:", parse_mode="HTML")
         return
 
-    # === 5. Очікуємо кількість годин ===
+    # Этап 2: Ожидаем количество часов
     if user_id in user_state and user_state[user_id].get("awaiting_forecast_hours"):
         try:
-            hours = int(text)
+            hours = int(message.text.strip())
             if hours <= 0 or hours > 1000:
                 raise ValueError
         except ValueError:
@@ -140,16 +111,15 @@ async def menu_handler(message: types.Message):
             return
 
         param = user_state[user_id]["forecast_param_selected"]
-        user_state.pop(user_id, None)
+        user_state.pop(user_id, None)  # сбрасываем
 
+        # Получаем данные
         data = get_data_from_google_sheet()
         if not data:
             await message.answer("❌ Не вдалося отримати дані з Google Sheets.", reply_markup=wan_keyboard)
             return
 
         import re
-        from datetime import datetime
-
         def extract_number(value_str):
             try:
                 match = re.search(r"[-+]?[0-9]*\.?[0-9]+", value_str)
@@ -159,6 +129,7 @@ async def menu_handler(message: types.Message):
                 pass
             return None
 
+        # Подготовка данных
         param_data = [
             {
                 "time": datetime.strptime(i["timestamp"], "%Y-%m-%dT%H:%M:%S.%fZ"),
@@ -172,7 +143,8 @@ async def menu_handler(message: types.Message):
             await message.answer("❌ Недостатньо даних для прогнозу.", reply_markup=wan_keyboard)
             return
 
-        x = [(i["time"] - param_data[0]["time"]).total_seconds() / 3600 for i in param_data]
+        # Линейная регрессия по времени
+        x = [(i["time"] - param_data[0]["time"]).total_seconds() / 3600 for i in param_data]  # часы
         y = [i["value"] for i in param_data]
         n = len(x)
         sum_x = sum(x)
@@ -201,7 +173,6 @@ async def menu_handler(message: types.Message):
             reply_markup=wan_keyboard
         )
         return
-
 
 
 
