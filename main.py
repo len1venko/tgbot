@@ -41,7 +41,8 @@ wan_keyboard = ReplyKeyboardMarkup(
         [KeyboardButton(text="🌤️ Перехід до головної сторінки веб-інтерфейсу (LAN)")],
         [KeyboardButton(text="📋 Переглянути поточні параметри мікроклімату")],
         [KeyboardButton(text="📈 Переглянути середні значення параметрів мікроклімату за дату")],
-        [KeyboardButton(text="📊 Прогноз параметру на N годин")],  # 🔴 Новая кнопка
+        [KeyboardButton(text="📊 Прогноз параметру на N годин")],
+        [KeyboardButton(text="🔧 Змінити пороги температури і вологості")],
         [KeyboardButton(text="🔙 Назад")]
     ],
     resize_keyboard=True
@@ -78,6 +79,47 @@ async def start_handler(message: types.Message):
 @dp.message()
 async def menu_handler(message: types.Message):
     user_id = message.from_user.id  # Получаем user_id из сообщения
+
+    # 🔧 Изменение порогов
+    if message.text.strip() == "🔧 Змінити пороги температури і вологості":
+        user_state[user_id] = {"awaiting_temp_threshold": True}
+        await message.answer("🌡 Введіть новий поріг температури (°C):")
+        return
+
+    # Этап 1: Ожидание температуры
+    if user_id in user_state and user_state[user_id].get("awaiting_temp_threshold"):
+        try:
+            temp = float(message.text.strip())
+            user_state[user_id]["new_temp"] = temp
+            user_state[user_id]["awaiting_temp_threshold"] = False
+            user_state[user_id]["awaiting_humidity_threshold"] = True
+            await message.answer("💧 Тепер введіть новий поріг вологості (%):")
+        except ValueError:
+            await message.answer("❌ Введіть коректне числове значення температури.")
+        return
+
+# Этап 2: Ожидание влажности и отправка на сервер
+    if user_id in user_state and user_state[user_id].get("awaiting_humidity_threshold"):
+        try:
+            humidity = float(message.text.strip())
+            temp = user_state[user_id]["new_temp"]
+            user_state.pop(user_id, None)  # сброс состояния
+
+            # Отправка запроса на веб-интерфейс
+            try:
+                resp = requests.get(f"https://tgbot-2-354s.onrender.com/set-thresholds?temp={temp}&humidity={humidity}")
+                if resp.status_code == 200:
+                    await message.answer(f"✅ Пороги успішно оновлено!\n🌡 Температура: {temp}°C\n💧 Вологість: {humidity}%", reply_markup=wan_keyboard)
+                else:
+                    await message.answer("❌ Помилка при оновленні порогів на сервері.", reply_markup=wan_keyboard)
+            except Exception as e:
+                print(e)
+                await message.answer("⚠️ Не вдалося з'єднатися з сервером.", reply_markup=wan_keyboard)
+
+        except ValueError:
+            await message.answer("❌ Введіть коректне числове значення вологості.")
+        return
+
     
     # 📊 Прогноз параметра
     if message.text.strip() == "📊 Прогноз параметру на N годин":
