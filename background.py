@@ -1,57 +1,17 @@
-from flask import Flask, request, jsonify
+from flask import Flask
 from threading import Thread
-from flask_cors import CORS
-
-import json
 import os
 
 app = Flask(__name__)
-CORS(app)
-THRESHOLD_FILE = "thresholds.json"
-
-# Загружаем пороги из файла или ставим дефолт
-def load_thresholds():
-    if os.path.exists(THRESHOLD_FILE):
-        with open(THRESHOLD_FILE, "r") as f:
-            return json.load(f)
-    else:
-        return {"temp": 25, "humidity": 60}
-
-# Сохраняем пороги в файл
-def save_thresholds(thresholds):
-    with open(THRESHOLD_FILE, "w") as f:
-        json.dump(thresholds, f)
 
 @app.route('/')
-def index():
-    return "Сервер працює!"
-
-@app.route('/get-thresholds')
-def get_thresholds():
-    thresholds = load_thresholds()
-    return jsonify(thresholds)
-
-@app.route('/set-thresholds')
-def set_thresholds():
-    try:
-        temp = float(request.args.get("temp"))
-        humidity = float(request.args.get("humidity"))
-        thresholds = {"temp": temp, "humidity": humidity}
-        save_thresholds(thresholds)
-        print(f"Set thresholds: temp={temp}, humidity={humidity}")  # Лог
-        return "OK", 200
-    except Exception as e:
-        print(f"Error in set-thresholds: {e}")
-        return "Invalid parameters", 400
-
-
-
+def home():
+    return "I'm alive"
 
 def run():
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
+    app.run(host="0.0.0.0", port=port)
 
 def keep_alive():
-    thread = Thread(target=run)
-    thread.daemon = True
-    thread.start()
+    t = Thread(target=run)
+    t.start()
