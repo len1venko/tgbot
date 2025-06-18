@@ -189,7 +189,7 @@ async def menu_handler(message: types.Message):
 
     # 🌤️ LAN
     elif message.text.strip() == "🌤️ Перехід до головної сторінки веб-інтерфейсу (LAN)":
-        await message.answer("🔗 [Дані (WAN)](https://192.168.0.103/)", parse_mode="Markdown", reply_markup=wan_keyboard)
+        await message.answer("🔗 [Дані (WAN)](https://192.168.6.243/)", parse_mode="Markdown", reply_markup=wan_keyboard)
         return
 
     # 📋 Поточні параметри
